@@ -14,7 +14,7 @@ ENV LANG=C.UTF-8
 # Install linux package
 RUN sed -i 's/archive.ubuntu.com/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list
 RUN	apt-get update && apt-get install -y gnupg2 git libglib2.0-0 \
-    libgl1-mesa-glx curl wget zip ninja-build build-essential \
+    libgl1-mesa-glx vim curl wget zip ninja-build build-essential \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -33,7 +33,7 @@ RUN pip install -e /executor
 # RUN git clone https://github.com/facebookresearch/detectron2.git && pip install -e detectron2
 
 ADD . /workspace
-RUN pip install -e . /workspace
+RUN pip install -r requirements.txt && pip install -e . /workspace
 
 WORKDIR /workspace
 RUN echo "python3 start.py" > /usr/bin/start.sh

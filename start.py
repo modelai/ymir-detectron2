@@ -11,7 +11,7 @@ from ymir_exc import dataset_reader as dr
 from ymir_exc import env, monitor
 from ymir_exc import result_writer as rw
 
-from detectron2.utils.ymir import get_merged_config, get_ymir_process, YmirStage
+from detectron2.utils.ymir import get_merged_config, get_ymir_process, YmirStage, convert_ymir_to_coco
 
 def start() -> int:
     cfg = get_merged_config()
@@ -31,12 +31,30 @@ def start() -> int:
 
 
 def _run_training(cfg: edict) -> None:
+    # convert ymir dataset to coco format
+    convert_ymir_to_coco(cfg)
+    monitor.write_monitor_logger(percent=get_ymir_process(stage=YmirStage.PREPROCESS, p=1.0))
+
     config_file = cfg.param.config_file
     num_gpus = len(cfg.param.gpu_id.split(','))
     models_dir = cfg.ymir.output.models_dir
     args_options = cfg.param.args_options
+    num_classes = len(cfg.param.class_names)
+    batch_size = int(cfg.param.batch_size)
     command = f'python3 tools/train_net.py --config-file {config_file}' + \
-        f' --num-gpus {num_gpus} train.output_dir {models_dir} {args_options}'
+        f' --num-gpus {num_gpus}'
+
+    if config_file.endswith('.py'):
+        command += f" train.output_dir={models_dir} MODEL.RETINANET.NUM_CLASSES={num_classes}" + \
+                f" MODEL.ROI_HEADS.NUM_CLASSES={num_classes}" + \
+                f" SOLVER.IMS_PER_BATCH={batch_size}"
+    else:
+        command += f" OUTPUT_DIR {models_dir} MODEL.RETINANET.NUM_CLASSES {num_classes}" + \
+            f" MODEL.ROI_HEADS.NUM_CLASSES {num_classes}" + \
+                f" SOLVER.IMS_PER_BATCH {batch_size}"
+
+    if args_options:
+        command += f" {args_options}"
     logging.info(f'start training: {command}')
 
     subprocess.run(command.split(), check=True)

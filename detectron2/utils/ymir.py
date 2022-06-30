@@ -1,6 +1,7 @@
 """
 utils function for ymir and yolov5
 """
+import os
 import os.path as osp
 import shutil
 from enum import IntEnum
@@ -9,10 +10,12 @@ from typing import Any, List, Tuple
 import numpy as np
 import torch
 import yaml
+import json
 from easydict import EasyDict as edict
 from nptyping import NDArray, Shape, UInt8
 from ymir_exc import env
 from ymir_exc import result_writer as rw
+import imagesize
 
 class YmirStage(IntEnum):
     PREPROCESS = 1  # convert dataset
@@ -179,26 +182,69 @@ def convert_ymir_to_coco(cfg: edict) -> None:
     """
     convert ymir format dataset to coco format
     generate coco_{train/val/test}.json for training/mining/infer
+    view follow line for detail:
+    - https://cocodataset.org/#format-data
+    - https://github.com/facebookresearch/detectron2/blob/main/datasets/README.md
+    - https://detectron2.readthedocs.io/en/latest/tutorials/datasets.html
     """
+    out_dir = cfg.ymir.output.root_dir
+    # os.environ.setdefault('DETECTRON2_DATASETS', out_dir)
+    ymir_dataset_dir = osp.join(out_dir,'ymir_dataset')
+    os.makedirs(ymir_dataset_dir, exist_ok=True)
 
-    data = dict(path=cfg.ymir.output.root_dir,
-                nc=len(cfg.param.class_names),
-                names=cfg.param.class_names)
-    for split, prefix in zip(['train', 'val', 'test'], ['training', 'val', 'candidate']):
+
+    for split, prefix in zip(['train', 'val'], ['training', 'val']):
         src_file = getattr(cfg.ymir.input, f'{prefix}_index_file')
         with open(src_file) as fp:
             lines = fp.readlines()
 
+        img_id=0
+        ann_id=0
+        data = dict(images=[],
+                annotations=[],
+                categories=[],
+                licenses=[],
+                info='convert from ymir')
+
+        for id,name in enumerate(cfg.param.class_names):
+            data['categories'].append(dict(id=id,
+                name=name,
+                supercategory="none"))
+
         for line in lines:
-            if split in ['train','val']:
-                img_file, ann_file = line.strip().split()
-            else:
-                img_file, ann_file = line.strip(), None
+            img_file, ann_file = line.strip().split()
+            width, height = imagesize.get(img_file)
+            img_info=dict(file_name=img_file,
+                height=height,
+                width=width,
+                id=img_id)
 
-        data[split] = f'{split}.tsv'
+            data['images'].append(img_info)
 
-    with open(osp.join(cfg.ymir.output.root_dir, 'data.yaml'), 'w') as fw:
-        fw.write(yaml.safe_dump(data))
+            if osp.exists(ann_file):
+                for ann_line in open(ann_file,'r').readlines():
+                    ann_strlist = ann_line.strip().split(',')
+                    class_id, x1, y1, x2, y2 = [int(s) for s in ann_strlist[0:5]]
+                    bbox_width = x2-x1
+                    bbox_height = y2-y1
+                    bbox_area = bbox_width * bbox_height
+                    bbox_quality = float(ann_strlist[5]) if len(ann_strlist)>5 and ann_strlist[5].isnumeric() else 1
+                    ann_info = dict(bbox=[x1,y1,bbox_width,bbox_height],   # x,y,width,height
+                        area=bbox_area,
+                        score=1.0,
+                        bbox_quality=bbox_quality,
+                        iscrowd=0,
+                        segmentation=[[x1,y1,x1,y2,x2,y2,x2,y1]],
+                        category_id=class_id,   # start from 0
+                        id=ann_id,
+                        image_id=img_id)
+                    data['annotations'].append(ann_info)
+                    ann_id+=1
+
+            img_id+=1
+
+        with open(osp.join(ymir_dataset_dir, f'ymir_{split}.json'), 'w') as fw:
+            json.dump(data, fw)
 
 
 def write_ymir_training_result(cfg: edict, results: Tuple, maps: NDArray, rewrite=False) -> int:
