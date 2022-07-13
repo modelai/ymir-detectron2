@@ -3,6 +3,7 @@ ARG CUDA="11.1"
 ARG CUDNN="8"
 
 # cuda11.1 + pytorch 1.9.0 + cudnn8 not work!!!
+# youdaoyzbx/ymir-executor:detectron2-tmi
 FROM pytorch/pytorch:${PYTORCH}-cuda${CUDA}-cudnn${CUDNN}-runtime
 ARG SERVER_MODE=prod
 
