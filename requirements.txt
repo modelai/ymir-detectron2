@@ -4,3 +4,4 @@ nptyping>=2.1.1 # numpy type hint
 typing-extensions>=4.2.0
 easydict>=1.9
 numpy>=1.20.0
+scipy>=1.8.1

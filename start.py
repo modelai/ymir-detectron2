@@ -43,7 +43,7 @@ def _run_training() -> None:
 
 
 def _run_mining(task_idx: int = 0, task_num: int = 1) -> None:
-    command = 'python3 ymir/ymir_mining.py'
+    command = f'python3 ymir/ymir_mining.py'
     logging.info(f'mining: {command}')
     subprocess.run(command.split(), check=True)
     monitor.write_monitor_logger(percent=get_ymir_process(
@@ -51,7 +51,7 @@ def _run_mining(task_idx: int = 0, task_num: int = 1) -> None:
 
 
 def _run_infer(task_idx: int = 0, task_num: int = 1) -> None:
-    command = f'python3 ymir/ymir_infer.py --task_idx {task_idx} --task_num {task_num}'
+    command = f'python3 ymir/ymir_infer.py'
     logging.info(f'infer: {command}')
     subprocess.run(command.split(), check=True)
     monitor.write_monitor_logger(percent=get_ymir_process(

@@ -12,7 +12,7 @@ from tqdm import tqdm
 from detectron2.engine.defaults import DefaultPredictor
 from detectron2.config import get_cfg
 from ymir.utils import (YmirStage, get_merged_config,
-                                   get_weight_file, get_ymir_process, CV_IMAGE)
+                        get_weight_file, get_ymir_process, CV_IMAGE)
 from ymir_exc import dataset_reader as dr
 from ymir_exc import env, monitor
 from ymir_exc import result_writer as rw
@@ -31,22 +31,20 @@ def get_config_file(cfg):
             f'no config_file config.yaml found in {model_dir}')
 
 
-
 class YmirModel(object):
     def __init__(self, ymir_cfg: edict):
         self.ymir_cfg = ymir_cfg
         self.class_names = ymir_cfg.param.class_names
+        # for multiple tasks, mining first, then infer
         if ymir_cfg.ymir.run_mining and ymir_cfg.ymir.run_infer:
-            # mining_task_idx = 0
             infer_task_idx = 1
             task_num = 2
         else:
-            # mining_task_idx = 0
             infer_task_idx = 0
             task_num = 1
 
-        self.task_idx=infer_task_idx
-        self.task_num=task_num
+        self.task_idx = infer_task_idx
+        self.task_num = task_num
 
         # Specify the path to model config and checkpoint file
         config_file = get_config_file(ymir_cfg)
@@ -57,7 +55,7 @@ class YmirModel(object):
         cfg_node.merge_from_file(config_file)
 
         # TODO cfg_node.merge_from_list(cfg.param.opts)
-        cfg_node.MODEL.WEIGHTS=checkpoint_file
+        cfg_node.MODEL.WEIGHTS = checkpoint_file
 
         # Set score_threshold for builtin models
         cfg_node.MODEL.RETINANET.SCORE_THRESH_TEST = conf
@@ -75,36 +73,36 @@ class YmirModel(object):
         predictions = self.predictor(img)['instances']
         anns = []
 
-        print(predictions.scores)
-        print(predictions.pred_classes)
         for i in range(len(predictions)):
-            print(predictions.pred_boxes[i].tensor)
-            xmin, ymin, xmax, ymax = predictions.pred_boxes[i].tensor[0].tolist()
             conf = predictions.scores[i]
             cls = predictions.pred_classes[i]
-            print(conf, cls)
-            ann = rw.Annotation(class_name=self.class_names[min(int(cls),len(self.class_names)-1)], score=float(conf), box=rw.Box(
-                x=int(xmin), y=int(ymin), w=int(xmax - xmin), h=int(ymax - ymin)))
+            # predictions.pred_boxes[i].tensor.shape: torch.Size([1, 4])
+            for t in predictions.pred_boxes[i].tensor.data.cpu().numpy():
+                xmin, ymin, xmax, ymax = t.tolist()
+                ann = rw.Annotation(class_name=self.class_names[int(cls) - 1],
+                                    score=float(conf),
+                                    box=rw.Box(x=int(xmin),
+                                            y=int(ymin),
+                                            w=int(xmax - xmin),
+                                            h=int(ymax - ymin)))
 
-            anns.append(ann)
-            break
+                anns.append(ann)
         return anns
 
-if __name__ == '__main__':
+
+def main():
     cfg = get_merged_config()
 
-    cfg.ymir.run_infer=True
-    cfg.ymir.run_mining=False
-    task_idx = 0
-    task_num = 1
-    m = YmirModel(ymir_cfg=cfg)
+    model = YmirModel(cfg)
+    task_idx = model.task_idx
+    task_num = model.task_num
 
     monitor.write_monitor_logger(percent=get_ymir_process(
         stage=YmirStage.PREPROCESS, p=1.0, task_idx=task_idx, task_num=task_num))
 
     N = dr.items_count(env.DatasetType.CANDIDATE)
     infer_result = dict()
-    model = YmirModel(cfg)
+
     idx = -1
 
     monitor_gap = max(1, N // 100)
@@ -115,10 +113,16 @@ if __name__ == '__main__':
         idx += 1
 
         if idx % monitor_gap == 0:
-            percent = get_ymir_process(stage=YmirStage.TASK, p=idx / N, task_idx=task_idx, task_num=task_num)
+            percent = get_ymir_process(stage=YmirStage.TASK, p=idx / N,
+                                       task_idx=task_idx, task_num=task_num)
             monitor.write_monitor_logger(percent=percent)
 
     rw.write_infer_result(infer_result=infer_result)
     monitor.write_monitor_logger(percent=get_ymir_process(
         stage=YmirStage.PREPROCESS, p=1.0, task_idx=task_idx, task_num=task_num))
 
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

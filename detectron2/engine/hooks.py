@@ -25,6 +25,8 @@ from detectron2.utils.events import EventStorage, EventWriter
 from detectron2.utils.file_io import PathManager
 
 from .train_loop import HookBase
+from ymir.utils import get_ymir_process, YmirStage
+from ymir_exc import monitor
 
 __all__ = [
     "CallbackHook",
@@ -520,6 +522,7 @@ class EvalHook(HookBase):
         """
         self._period = eval_period
         self._func = eval_function
+        self.monitor_gap = max(1, (self.max_iter - self.start_iter) // 1000)
 
     def _do_eval(self):
         results = self._func()
@@ -550,6 +553,11 @@ class EvalHook(HookBase):
             # do the last eval in after_train
             if next_iter != self.trainer.max_iter:
                 self._do_eval()
+
+        if next_iter % self.monitor_gap == 0:
+            percent = get_ymir_process(stage=YmirStage.TASK,
+                                       p=next_iter / (self.max_iter - self.start_iter + 1))
+            monitor.write_monitor_logger(percent=percent)
 
     def after_train(self):
         # This condition is to prevent the eval from running after a failed training
