@@ -2,12 +2,14 @@
 # after build image, it should at /img-man/training-template.yaml
 # key: gpu_id, task_id, pretrained_model_params, class_names should be preserved
 
-gpu_id: '0'
-task_id: 'default-training-task'
-pretrained_model_params: []
-class_names: []
+# gpu_id: '0'
+# task_id: 'default-training-task'
+# pretrained_model_params: []
+# class_names: []
 
-batch_size: 16
-config_file: config_file
+batch_size: 2
+config_file: 'configs/COCO-Detection/retinanet_R_50_FPN_1x.yaml'
+max_iter: 90000
+learning_rate: 0.001
 args_options: ''
 

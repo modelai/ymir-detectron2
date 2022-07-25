@@ -13,27 +13,23 @@ ENV CMAKE_PREFIX_PATH="$(dirname $(which conda))/../"
 ENV LANG=C.UTF-8
 
 # Install linux package
-RUN sed -i 's/archive.ubuntu.com/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list
 RUN	apt-get update && apt-get install -y gnupg2 git libglib2.0-0 \
     libgl1-mesa-glx vim curl wget zip ninja-build build-essential \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # install ymir-exc sdk
-RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple
-# RUN if [ "${SERVER_MODE}" = "dev" ]; then \
-#         pip install --force-reinstall -U "git+https://github.com/IndustryEssentials/ymir.git/@dev#egg=ymir-exc&subdirectory=docker_executor/sample_executor/ymir_exc"; \
-#     else \
-#         pip install ymir-exc; \
-#     fi
-ADD executor /executor
-RUN pip install -e /executor
+RUN if [ "${SERVER_MODE}" = "dev" ]; then \
+        pip install "git+https://github.com/IndustryEssentials/ymir.git/@dev#egg=ymir-exc&subdirectory=docker_executor/sample_executor/ymir_exc"; \
+    else \
+        pip install ymir-exc; \
+    fi
 
 # install detectron2
 # RUN pip install detectron2 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cu111/torch1.8/index.html
 # RUN git clone https://github.com/facebookresearch/detectron2.git && pip install -e detectron2
 
-ADD . /workspace
+COPY . /workspace
 RUN pip install -r requirements.txt && pip install -e . /workspace
 
 WORKDIR /workspace

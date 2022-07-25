@@ -25,7 +25,6 @@ import detectron2.utils.comm as comm
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import get_cfg
 from detectron2.data import MetadataCatalog
-from detectron2.data.datasets import register_coco_instances
 from detectron2.engine import DefaultTrainer, default_argument_parser, default_setup, hooks, launch
 from detectron2.evaluation import (
     CityscapesInstanceEvaluator,
@@ -39,7 +38,7 @@ from detectron2.evaluation import (
     verify_results,
 )
 from detectron2.modeling import GeneralizedRCNNWithTTA
-
+from ymir.utils import modify_detectron2_config
 
 def build_evaluator(cfg, dataset_name, output_folder=None):
     """
@@ -125,18 +124,15 @@ def setup(args):
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
     # use ymir_dataset to train
-    cfg.DATASETS.TRAIN=('ymir_dataset_train',)
-    cfg.DATASETS.TEST=('ymir_dataset_val',)
+    modify_detectron2_config(cfg)
     cfg.freeze()
     default_setup(cfg, args)
     return cfg
 
 
 def main(args):
-    # register ymir_dataset train/val in detectron2
-    register_coco_instances("ymir_dataset_train", {}, "/out/ymir_dataset/ymir_train.json", "/in")
-    register_coco_instances("ymir_dataset_val", {}, "/out/ymir_dataset/ymir_val.json", "/in")
     cfg = setup(args)
+
 
     if args.eval_only:
         model = Trainer.build_model(cfg)

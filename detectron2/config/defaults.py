@@ -633,3 +633,7 @@ _C.VIS_PERIOD = 0
 # Do not commit any configs into it.
 _C.GLOBAL = CN()
 _C.GLOBAL.HACK = 1.0
+
+# YMIR config
+_C.YMIR = CN()
+_C.YMIR.TENSORBOARD_DIR = "./output/tensorboard_dir"
