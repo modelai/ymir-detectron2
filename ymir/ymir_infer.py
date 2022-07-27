@@ -4,10 +4,12 @@ import warnings
 from typing import Any, List
 
 import cv2
+import torch
 import numpy as np
 from easydict import EasyDict as edict
 from nptyping import NDArray, Shape
 from tqdm import tqdm
+from detectron2.structures import Boxes, RotatedBoxes
 
 from detectron2.engine.defaults import DefaultPredictor
 from detectron2.config import get_cfg
@@ -49,7 +51,7 @@ class YmirModel(object):
         # Specify the path to model config and checkpoint file
         config_file = get_config_file(ymir_cfg)
         checkpoint_file = get_weight_file(ymir_cfg)
-        conf = ymir_cfg.param.conf_threshold
+        self.conf = ymir_cfg.param.conf_threshold
 
         cfg_node = get_cfg()
         cfg_node.merge_from_file(config_file)
@@ -58,9 +60,9 @@ class YmirModel(object):
         cfg_node.MODEL.WEIGHTS = checkpoint_file
 
         # Set score_threshold for builtin models
-        cfg_node.MODEL.RETINANET.SCORE_THRESH_TEST = conf
-        cfg_node.MODEL.ROI_HEADS.SCORE_THRESH_TEST = conf
-        cfg_node.MODEL.PANOPTIC_FPN.COMBINE.INSTANCES_CONFIDENCE_THRESH = conf
+        cfg_node.MODEL.RETINANET.SCORE_THRESH_TEST = self.conf
+        cfg_node.MODEL.ROI_HEADS.SCORE_THRESH_TEST = self.conf
+        cfg_node.MODEL.PANOPTIC_FPN.COMBINE.INSTANCES_CONFIDENCE_THRESH = self.conf
         cfg_node.freeze()
         self.predictor = DefaultPredictor(cfg_node)
 
@@ -70,23 +72,33 @@ class YmirModel(object):
         scores --> predictions.scores
         classes --> predictions.pred_classes.tolist()
         """
-        predictions = self.predictor(img)['instances']
+        predictions = self.predictor(img)['instances'].to(torch.device('cpu'))
+        scores = predictions.scores
+        classes = predictions.pred_classes
+        boxes = predictions.pred_boxes
+        if isinstance(boxes, Boxes) or isinstance(boxes, RotatedBoxes):
+            boxes = boxes.tensor.detach().numpy()
+        else:
+            boxes = np.asarray(boxes)
         anns = []
 
         for i in range(len(predictions)):
-            conf = predictions.scores[i]
-            cls = predictions.pred_classes[i]
-            # predictions.pred_boxes[i].tensor.shape: torch.Size([1, 4])
-            for t in predictions.pred_boxes[i].tensor.data.cpu().numpy():
-                xmin, ymin, xmax, ymax = t.tolist()
-                ann = rw.Annotation(class_name=self.class_names[int(cls) - 1],
-                                    score=float(conf),
-                                    box=rw.Box(x=int(xmin),
-                                            y=int(ymin),
-                                            w=int(xmax - xmin),
-                                            h=int(ymax - ymin)))
+            score = scores[i]
+            if score <= self.conf:
+                warnings.warn(f'score={score} < {self.conf}')
+                continue
+            cls = classes[i]
+            xmin, ymin, xmax, ymax = boxes[i]
+            if int(xmax-xmin)==0 or int(ymax-ymin)==0:
+                continue
+            ann = rw.Annotation(class_name=self.class_names[int(cls) - 1],
+                                score=float(score),
+                                box=rw.Box(x=int(xmin),
+                                        y=int(ymin),
+                                        w=int(xmax - xmin),
+                                        h=int(ymax - ymin)))
 
-                anns.append(ann)
+            anns.append(ann)
         return anns
 
 

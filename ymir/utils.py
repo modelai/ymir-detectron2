@@ -212,26 +212,25 @@ def get_weight_file(cfg: edict) -> str:
     return ""
 
 
-def write_ymir_training_result(last: bool = False, key_score: Optional[float] = None):
+def write_ymir_training_result(last: bool = False):
+    EVAL_TMP_FILE = os.getenv('COCO_EVAL_TMP_FILE')
+    if EVAL_TMP_FILE is None:
+        raise Exception(
+            'please set valid environment variable EVAL_TMP_FILE to write result into json file')
+    
+    with open(EVAL_TMP_FILE,'r') as f:
+        lines = [x for x in f.readlines() if x.lower().find('bbox/ap')>-1]
+        eval_result = json.loads(lines[-1].strip())
+    
+    map50 = eval_result['bbox/AP50']
     YMIR_VERSION = os.environ.get('YMIR_VERSION', '1.2.0')
     if Version(YMIR_VERSION) >= Version('1.2.0'):
-        write_latest_ymir_training_result(last, key_score)
-    else:
-        write_ancient_ymir_training_result(key_score)
+        write_latest_ymir_training_result(last, map50)
+    elif last:
+        write_ancient_ymir_training_result(map50)
 
 
-def write_latest_ymir_training_result(last: bool = False, key_score: Optional[float] = None):
-    if key_score:
-        logging.info(f'key_score is {key_score}')
-    COCO_EVAL_TMP_FILE = os.getenv('COCO_EVAL_TMP_FILE')
-    if COCO_EVAL_TMP_FILE is None:
-        raise Exception(
-            'please set valid environment variable COCO_EVAL_TMP_FILE to write result into json file')
-
-    eval_result = mmcv.load(COCO_EVAL_TMP_FILE)
-    # eval_result may be empty dict {}.
-    map = eval_result.get('bbox_mAP_50', 0)
-
+def write_latest_ymir_training_result(last: bool = False, map: Optional[float] = None):
     WORK_DIR = os.getenv('YMIR_MODELS_DIR')
     if WORK_DIR is None or not osp.isdir(WORK_DIR):
         raise Exception(
@@ -247,9 +246,10 @@ def write_latest_ymir_training_result(last: bool = False, key_score: Optional[fl
                              mAP=float(map),
                              stage_name='last')
     else:
-        # save newest weight file in format epoch_xxx.pth or iter_xxx.pth
-        weight_files = [osp.join(WORK_DIR, f) for f in result_files if f.startswith(
-            ('iter_', 'epoch_')) and f.endswith('.pth')]
+        # save newest weight file in format model_0001234.pth
+        if 'model_final.pth' in result_files:
+            result_files.remove('model_final.pth')
+        weight_files = [osp.join(WORK_DIR, f) for f in result_files if f.startswith('model_') and f.endswith('.pth')]
 
         if len(weight_files) > 0:
             newest_weight_file = osp.basename(
@@ -265,25 +265,13 @@ def write_latest_ymir_training_result(last: bool = False, key_score: Optional[fl
                 model_stages = {}
 
             if stage_name not in model_stages:
-                config_files = [f for f in result_files if f.endswith('.py')]
+                config_files = [osp.join(WORK_DIR, 'config.yaml')]
                 rw.write_model_stage(files=[newest_weight_file] + config_files,
                                      mAP=float(map),
                                      stage_name=stage_name)
 
 
-def write_ancient_ymir_training_result(key_score: Optional[float] = None):
-    if key_score:
-        logging.info(f'key_score is {key_score}')
-
-    COCO_EVAL_TMP_FILE = os.getenv('COCO_EVAL_TMP_FILE')
-    if COCO_EVAL_TMP_FILE is None:
-        raise Exception(
-            'please set valid environment variable COCO_EVAL_TMP_FILE to write result into json file')
-
-    eval_result = mmcv.load(COCO_EVAL_TMP_FILE)
-    # eval_result may be empty dict {}.
-    map = eval_result.get('bbox_mAP_50', 0)
-
+def write_ancient_ymir_training_result(map: Optional[float] = None):
     WORK_DIR = os.getenv('YMIR_MODELS_DIR')
     if WORK_DIR is None or not osp.isdir(WORK_DIR):
         raise Exception(

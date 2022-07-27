@@ -11,6 +11,8 @@ ENV TORCH_CUDA_ARCH_LIST="6.0 6.1 7.0+PTX"
 ENV TORCH_NVCC_FLAGS="-Xfatbin -compress-all"
 ENV CMAKE_PREFIX_PATH="$(dirname $(which conda))/../"
 ENV LANG=C.UTF-8
+ENV YMIR_VERSION=${YMIR}
+ENV PYTHONPATH=.
 
 # Install linux package
 RUN	apt-get update && apt-get install -y gnupg2 git libglib2.0-0 \
@@ -25,12 +27,9 @@ RUN if [ "${SERVER_MODE}" = "dev" ]; then \
         pip install ymir-exc; \
     fi
 
-# install detectron2
-# RUN pip install detectron2 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cu111/torch1.8/index.html
-# RUN git clone https://github.com/facebookresearch/detectron2.git && pip install -e detectron2
-
 COPY . /workspace
-RUN pip install -r requirements.txt && pip install -e . /workspace
+RUN pip install -r requirements.txt && pip install -e . /workspace \
+    && mkdir -p /img-man && mv /workspace/ymir/img-man/* /img-man
 
 WORKDIR /workspace
 RUN echo "python3 start.py" > /usr/bin/start.sh

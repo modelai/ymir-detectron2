@@ -12,4 +12,3 @@ config_file: 'configs/COCO-Detection/retinanet_R_50_FPN_1x.yaml'
 max_iter: 90000
 learning_rate: 0.001
 args_options: ''
-
