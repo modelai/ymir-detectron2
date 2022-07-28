@@ -95,7 +95,8 @@ def convert_ymir_to_coco(cfg: edict) -> None:
                     annotations=[],
                     categories=[],
                     licenses=[],
-                    info='convert from ymir')
+                    info='convert from ymir'
+                    )
 
         cat_id_start = 1
         for id, name in enumerate(cfg.param.class_names):
@@ -213,7 +214,7 @@ def write_ymir_training_result(last: bool = False):
     with open(EVAL_TMP_FILE, 'r') as f:
         eval_result = json.load(f)
 
-    map50 = eval_result.get('AP50', 0)
+    map50 = eval_result.get('AP50', 0) / 100
     YMIR_VERSION = os.environ.get('YMIR_VERSION', '1.2.0')
     if Version(YMIR_VERSION) >= Version('1.2.0'):
         write_latest_ymir_training_result(last, map50)
