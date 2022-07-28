@@ -3,10 +3,16 @@
 - [detectron2](./README_DETECTRON2.md)
 - [ymir](https://github.com/IndustryEssentials/ymir)
 
+# ymir docker image
+
+```
+docker pull youdaoyzbx/ymir-executor:ymir1.0.0-detectron2-tmi
+```
+
 # build executor
 
 ```
-docker build -t ymir/ymir-executor:ymir1.2.0-cuda111-detectron2-tmi . -f cu111.dockerfile --build-arg SERVER_MODE=dev
+docker build -t ymir/ymir-executor:ymir1.0.0-cuda111-detectron2-tmi . -f cu111.dockerfile --build-arg SERVER_MODE=dev --build-arg YMIR=1.0.0
 ```
 
 ## todo 
@@ -15,10 +21,6 @@ docker build -t ymir/ymir-executor:ymir1.2.0-cuda111-detectron2-tmi . -f cu111.d
 FloatPointError: Loss became infinite or NaN at iteration=902!
 loss_dict = {'loss_cls': nan, 'loss_box_reg': nan}
 ```
-
-- [ ] do not support multi-stage ymir models
-
-- [ ] save model weight and config file
 
 ## change log 
 
