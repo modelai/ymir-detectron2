@@ -254,7 +254,7 @@ class YmirMining(YmirModel):
 
     def mining(self):
         N = dr.items_count(env.DatasetType.CANDIDATE)
-        monitor_gap = max(1, N // 100)
+        monitor_gap = max(1, N // 1000)
         idx = -1
         beta = 1.3
         mining_result = []

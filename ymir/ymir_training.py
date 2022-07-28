@@ -38,9 +38,9 @@ def main(cfg: edict) -> int:
     monitor.write_monitor_logger(percent=get_ymir_process(stage=YmirStage.TASK, p=1.0))
 
     # copy tensorboard log to ymir tensorboard directory
-    tensorboard_log_files = glob.glob(osp.join(models_dir,'events.out.tfevents.*'))
-    for log_file in tensorboard_log_files:
-        shutil.copy(log_file, cfg.ymir.output.tensorboard_dir, follow_symlinks=True)
+    # tensorboard_log_files = glob.glob(osp.join(models_dir,'events.out.tfevents.*'))
+    # for log_file in tensorboard_log_files:
+    #     shutil.copy(log_file, cfg.ymir.output.tensorboard_dir, follow_symlinks=True)
 
     write_ymir_training_result(last=True)
     # if task done, write 100% percent log
@@ -53,4 +53,5 @@ if __name__ == '__main__':
     os.environ.setdefault('PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION', 'python')
     os.environ.setdefault('EVAL_TMP_FILE', osp.join(cfg.ymir.output.models_dir, 'eval_tmp.json'))
     os.environ.setdefault('YMIR_MODELS_DIR', cfg.ymir.output.models_dir)
+    os.environ.setdefault('TENSORBOARD_DIR', cfg.ymir.output.tensorboard_dir)
     sys.exit(main(cfg))

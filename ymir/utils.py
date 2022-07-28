@@ -170,8 +170,10 @@ def modify_detectron2_config(detectron_cfg: CfgNode) -> CfgNode:
     detectron_cfg.MODEL.RETINANET.NUM_CLASSES = num_classes
     detectron_cfg.MODEL.ROI_HEADS.NUM_CLASSES = num_classes
     detectron_cfg.SOLVER.IMS_PER_BATCH = batch_size
-    # detectron_cfg.YMIR=CfgNode()
-    detectron_cfg.YMIR.TENSORBOARD_DIR = ymir_cfg.ymir.output.tensorboard_dir
+
+    weight_file = get_weight_file(ymir_cfg)
+    if weight_file:
+        detectron_cfg.MODEL.WEIGHTS = weight_file
     # modify iters, checkpoint, tensorboard config
     if max_iter > 0:
         # use dynamic default value if max_iter <= 0

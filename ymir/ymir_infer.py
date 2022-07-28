@@ -120,7 +120,7 @@ def main():
 
     idx = -1
 
-    monitor_gap = max(1, N // 100)
+    monitor_gap = max(1, N // 1000)
     for asset_path, _ in tqdm(dr.item_paths(dataset_type=env.DatasetType.CANDIDATE)):
         # img = cv2.imread(asset_path)
         img = read_image(asset_path, format="BGR")
