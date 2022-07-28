@@ -188,10 +188,11 @@ def get_weight_file(cfg: edict) -> str:
     return the weight file path by priority
     find weight file in cfg.param.pretrained_model_params or cfg.param.model_params_path
     """
+    model_params_path: List = []
     if cfg.ymir.run_training:
-        model_params_path: List = cfg.param.get('pretrained_model_params', [])
+        model_params_path = cfg.param.get('pretrained_model_params', [])
     else:
-        model_params_path: List = cfg.param.get('model_params_path', [])
+        model_params_path = cfg.param.get('model_params_path', [])
 
     model_dir = cfg.ymir.input.models_dir
     model_params_path = [
@@ -220,7 +221,7 @@ def write_ymir_training_result(last: bool = False):
         write_ancient_ymir_training_result(map50)
 
 
-def write_latest_ymir_training_result(last: bool = False, map: Optional[float] = None):
+def write_latest_ymir_training_result(last: bool = False, map: float = 0):
     WORK_DIR = os.getenv('YMIR_MODELS_DIR')
     if WORK_DIR is None or not osp.isdir(WORK_DIR):
         raise Exception(
@@ -262,7 +263,7 @@ def write_latest_ymir_training_result(last: bool = False, map: Optional[float] =
                                      stage_name=stage_name)
 
 
-def write_ancient_ymir_training_result(map: Optional[float] = None):
+def write_ancient_ymir_training_result(map: float = 0):
     WORK_DIR = os.getenv('YMIR_MODELS_DIR')
     if WORK_DIR is None or not osp.isdir(WORK_DIR):
         raise Exception(
