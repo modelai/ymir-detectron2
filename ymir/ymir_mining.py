@@ -2,20 +2,20 @@
 data augmentations for CALD method, including horizontal_flip, rotate(5'), cutout
 official code: https://github.com/we1pingyu/CALD/blob/master/cald/cald_helper.py
 """
-import random
-import sys
-from typing import Any, Dict, List, Tuple
-import argparse
-
-import cv2
-from easydict import EasyDict as edict
 import numpy as np
-from nptyping import NDArray
+import cv2
 from scipy.stats import entropy
 from tqdm import tqdm
 
-from ymir.utils import (BBOX, CV_IMAGE, YmirStage,
-                                   get_merged_config, get_ymir_process)
+from detectron2.data.detection_utils import read_image
+
+import argparse
+import random
+import sys
+from easydict import EasyDict as edict
+from nptyping import NDArray
+from typing import Any, Dict, List, Tuple
+from ymir.utils import BBOX, CV_IMAGE, YmirStage, get_merged_config, get_ymir_process
 from ymir_exc import dataset_reader as dr
 from ymir_exc import env, monitor
 from ymir_exc import result_writer as rw
@@ -259,7 +259,8 @@ class YmirMining(YmirModel):
         beta = 1.3
         mining_result = []
         for asset_path, _ in tqdm(dr.item_paths(dataset_type=env.DatasetType.CANDIDATE)):
-            img = cv2.imread(asset_path)
+            # img = cv2.imread(asset_path)
+            img = read_image(asset_path, format='BGR')
             # xyxy,conf,cls
             result = self.predict(img)
             bboxes, conf, _ = split_result(result)

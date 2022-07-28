@@ -64,5 +64,4 @@ if __name__ == '__main__':
                         datefmt='%Y%m%d-%H:%M:%S',
                         level=logging.INFO)
 
-    os.environ.setdefault('PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION', 'python')
     sys.exit(start())

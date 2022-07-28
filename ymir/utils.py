@@ -1,23 +1,24 @@
 """
 utils function for ymir and yolov5
 """
-import glob
-import logging
 import yaml
-import os
-import os.path as osp
-from enum import IntEnum
-from typing import Any, List, Optional
 
-import json
-import imagesize
-from easydict import EasyDict as edict
-from nptyping import NDArray, Shape, UInt8
-from packaging.version import Version
-from ymir_exc import env
-from ymir_exc import result_writer as rw
 from detectron2.config import CfgNode
 from detectron2.data.datasets import register_coco_instances
+
+import glob
+import imagesize
+import json
+import os
+import os.path as osp
+from easydict import EasyDict as edict
+from enum import IntEnum
+from nptyping import NDArray, Shape, UInt8
+from packaging.version import Version
+from typing import Any, List, Optional
+from ymir_exc import env
+from ymir_exc import result_writer as rw
+
 
 class YmirStage(IntEnum):
     PREPROCESS = 1  # convert dataset
@@ -68,6 +69,7 @@ def get_merged_config() -> edict:
     merged_cfg.ymir = env.get_current_env()
     return merged_cfg
 
+
 def convert_ymir_to_coco(cfg: edict) -> None:
     """
     convert ymir format dataset to coco format
@@ -79,63 +81,64 @@ def convert_ymir_to_coco(cfg: edict) -> None:
     """
     out_dir = cfg.ymir.output.root_dir
     # os.environ.setdefault('DETECTRON2_DATASETS', out_dir)
-    ymir_dataset_dir = osp.join(out_dir,'ymir_dataset')
+    ymir_dataset_dir = osp.join(out_dir, 'ymir_dataset')
     os.makedirs(ymir_dataset_dir, exist_ok=True)
-
 
     for split, prefix in zip(['train', 'val'], ['training', 'val']):
         src_file = getattr(cfg.ymir.input, f'{prefix}_index_file')
         with open(src_file) as fp:
             lines = fp.readlines()
 
-        img_id=0
-        ann_id=0
+        img_id = 0
+        ann_id = 0
         data = dict(images=[],
-                annotations=[],
-                categories=[],
-                licenses=[],
-                info='convert from ymir')
+                    annotations=[],
+                    categories=[],
+                    licenses=[],
+                    info='convert from ymir')
 
-        cat_id_start=1
-        for id,name in enumerate(cfg.param.class_names):
-            data['categories'].append(dict(id=id+cat_id_start,
-                name=name,
-                supercategory="none"))
+        cat_id_start = 1
+        for id, name in enumerate(cfg.param.class_names):
+            data['categories'].append(dict(id=id + cat_id_start,
+                                           name=name,
+                                           supercategory="none"))
 
         for line in lines:
             img_file, ann_file = line.strip().split()
             width, height = imagesize.get(img_file)
-            img_info=dict(file_name=img_file,
-                height=height,
-                width=width,
-                id=img_id)
+            img_info = dict(file_name=img_file,
+                            height=height,
+                            width=width,
+                            id=img_id)
 
             data['images'].append(img_info)
 
             if osp.exists(ann_file):
-                for ann_line in open(ann_file,'r').readlines():
+                for ann_line in open(ann_file, 'r').readlines():
                     ann_strlist = ann_line.strip().split(',')
                     class_id, x1, y1, x2, y2 = [int(s) for s in ann_strlist[0:5]]
-                    bbox_width = x2-x1
-                    bbox_height = y2-y1
+                    bbox_width = x2 - x1
+                    bbox_height = y2 - y1
                     bbox_area = bbox_width * bbox_height
-                    bbox_quality = float(ann_strlist[5]) if len(ann_strlist)>5 and ann_strlist[5].isnumeric() else 1
-                    ann_info = dict(bbox=[x1,y1,bbox_width,bbox_height],   # x,y,width,height
-                        area=bbox_area,
-                        score=1.0,
-                        bbox_quality=bbox_quality,
-                        iscrowd=0,
-                        segmentation=[[x1,y1,x1,y2,x2,y2,x2,y1]],
-                        category_id=class_id + cat_id_start,   # start from cat_id_start
-                        id=ann_id,
-                        image_id=img_id)
+                    bbox_quality = float(ann_strlist[5]) if len(
+                        ann_strlist) > 5 and ann_strlist[5].isnumeric() else 1
+                    ann_info = dict(bbox=[x1, y1, bbox_width, bbox_height],   # x,y,width,height
+                                    area=bbox_area,
+                                    score=1.0,
+                                    bbox_quality=bbox_quality,
+                                    iscrowd=0,
+                                    segmentation=[[x1, y1, x1, y2, x2, y2, x2, y1]],
+                                    category_id=class_id + cat_id_start,   # start from cat_id_start
+                                    id=ann_id,
+                                    image_id=img_id)
                     data['annotations'].append(ann_info)
-                    ann_id+=1
+                    ann_id += 1
 
-            img_id+=1
+            img_id += 1
 
         with open(osp.join(ymir_dataset_dir, f'ymir_{split}.json'), 'w') as fw:
             json.dump(data, fw)
+
 
 def modify_detectron2_config(detectron_cfg: CfgNode) -> CfgNode:
     """
@@ -154,29 +157,28 @@ def modify_detectron2_config(detectron_cfg: CfgNode) -> CfgNode:
     register_coco_instances("ymir_dataset_train", {}, "/out/ymir_dataset/ymir_train.json", "/in")
     register_coco_instances("ymir_dataset_val", {}, "/out/ymir_dataset/ymir_val.json", "/in")
 
-
     models_dir = ymir_cfg.ymir.output.models_dir
     num_classes = len(ymir_cfg.param.class_names)
     batch_size = int(ymir_cfg.param.batch_size)
     max_iter = int(ymir_cfg.param.max_iter)
     learning_rate = float(ymir_cfg.param.learning_rate)
 
-    detectron_cfg.DATASETS.TRAIN=('ymir_dataset_train',)
-    detectron_cfg.DATASETS.TEST=('ymir_dataset_val',)
-    detectron_cfg.OUTPUT_DIR=models_dir
-    detectron_cfg.MODEL.RETINANET.NUM_CLASSES=num_classes
-    detectron_cfg.MODEL.ROI_HEADS.NUM_CLASSES=num_classes
-    detectron_cfg.SOLVER.IMS_PER_BATCH=batch_size
+    detectron_cfg.DATASETS.TRAIN = ('ymir_dataset_train',)
+    detectron_cfg.DATASETS.TEST = ('ymir_dataset_val',)
+    detectron_cfg.OUTPUT_DIR = models_dir
+    detectron_cfg.MODEL.RETINANET.NUM_CLASSES = num_classes
+    detectron_cfg.MODEL.ROI_HEADS.NUM_CLASSES = num_classes
+    detectron_cfg.SOLVER.IMS_PER_BATCH = batch_size
     # detectron_cfg.YMIR=CfgNode()
-    detectron_cfg.YMIR.TENSORBOARD_DIR=ymir_cfg.ymir.output.tensorboard_dir
+    detectron_cfg.YMIR.TENSORBOARD_DIR = ymir_cfg.ymir.output.tensorboard_dir
     # modify iters, checkpoint, tensorboard config
     if max_iter > 0:
         # use dynamic default value if max_iter <= 0
-        detectron_cfg.SOLVER.MAX_ITER=max_iter
+        detectron_cfg.SOLVER.MAX_ITER = max_iter
 
     if learning_rate > 0:
         # use dynamic default value if learning_rate <= 0
-        detectron_cfg.SOLVER.BASE_LR=learning_rate
+        detectron_cfg.SOLVER.BASE_LR = learning_rate
 
     return detectron_cfg
 
@@ -195,17 +197,6 @@ def get_weight_file(cfg: edict) -> str:
     model_params_path = [
         osp.join(model_dir, p) for p in model_params_path if osp.exists(osp.join(model_dir, p)) and p.endswith(('.pth', '.pt'))]
 
-    # choose weight file by priority, best_xxx.pth > latest.pth > epoch_xxx.pth
-    # best_pth_files = [
-    #     f for f in model_params_path if osp.basename(f).startswith('best_')]
-    # if len(best_pth_files) > 0:
-    #     return max(best_pth_files, key=os.path.getctime)
-
-    # epoch_pth_files = [
-    #     f for f in model_params_path if osp.basename(f).startswith(('epoch_', 'iter_'))]
-    # if len(epoch_pth_files) > 0:
-    #     return max(epoch_pth_files, key=os.path.getctime)
-
     if len(model_params_path) > 0:
         return max(model_params_path, key=os.path.getctime)
 
@@ -213,16 +204,15 @@ def get_weight_file(cfg: edict) -> str:
 
 
 def write_ymir_training_result(last: bool = False):
-    EVAL_TMP_FILE = os.getenv('COCO_EVAL_TMP_FILE')
+    EVAL_TMP_FILE = os.getenv('EVAL_TMP_FILE')
     if EVAL_TMP_FILE is None:
         raise Exception(
             'please set valid environment variable EVAL_TMP_FILE to write result into json file')
-    
-    with open(EVAL_TMP_FILE,'r') as f:
-        lines = [x for x in f.readlines() if x.lower().find('bbox/ap')>-1]
-        eval_result = json.loads(lines[-1].strip())
-    
-    map50 = eval_result['bbox/AP50']
+
+    with open(EVAL_TMP_FILE, 'r') as f:
+        eval_result = json.load(f)
+
+    map50 = eval_result.get('AP50', 0)
     YMIR_VERSION = os.environ.get('YMIR_VERSION', '1.2.0')
     if Version(YMIR_VERSION) >= Version('1.2.0'):
         write_latest_ymir_training_result(last, map50)
@@ -238,7 +228,7 @@ def write_latest_ymir_training_result(last: bool = False, map: Optional[float] =
 
     # assert only one model config file in work_dir
     result_files = [osp.basename(f) for f in glob.glob(
-        osp.join(WORK_DIR, '*')) if osp.basename(f) != 'result.yaml']
+        osp.join(WORK_DIR, '*')) if osp.basename(f) != 'result.yaml' and osp.isfile(f)]
 
     if last:
         # save all output file
@@ -249,7 +239,8 @@ def write_latest_ymir_training_result(last: bool = False, map: Optional[float] =
         # save newest weight file in format model_0001234.pth
         if 'model_final.pth' in result_files:
             result_files.remove('model_final.pth')
-        weight_files = [osp.join(WORK_DIR, f) for f in result_files if f.startswith('model_') and f.endswith('.pth')]
+        weight_files = [osp.join(WORK_DIR, f)
+                        for f in result_files if f.startswith('model_') and f.endswith('.pth')]
 
         if len(weight_files) > 0:
             newest_weight_file = osp.basename(
@@ -279,7 +270,7 @@ def write_ancient_ymir_training_result(map: Optional[float] = None):
 
     # assert only one model config file in work_dir
     result_files = [osp.basename(f) for f in glob.glob(
-        osp.join(WORK_DIR, '*')) if osp.basename(f) != 'result.yaml']
+        osp.join(WORK_DIR, '*')) if osp.basename(f) != 'result.yaml' and osp.isfile(f)]
 
     training_result_file = osp.join(WORK_DIR, 'result.yaml')
     if osp.exists(training_result_file):
