@@ -19,3 +19,15 @@ loss_dict = {'loss_cls': nan, 'loss_box_reg': nan}
 - [ ] do not support multi-stage ymir models
 
 - [ ] save model weight and config file
+
+## change log 
+
+- add folder `ymir` for utils, train, infer and mining 
+
+- modify `detectron2/engine/defaults.py default_writers` to change tensorboard logging directory
+
+- modify `detectron2/engine/hooks.py EvalHook` to write `monitor.txt` and `result.yaml`
+
+- modify `tools/train_net.py` to modify training configuration
+
+- modify `detectron2/evaluation/coco_evaluation.py` to save EVAL_TMP_FILE

@@ -241,11 +241,12 @@ def default_writers(output_dir: str, max_iter: Optional[int] = None):
         list[EventWriter]: a list of :class:`EventWriter` objects.
     """
     PathManager.mkdirs(output_dir)
+    tensorboard_dir = os.getenv('TENSORBOARD_DIR', output_dir)
     return [
         # It may not always print what you want to see, since it prints "common" metrics only.
         CommonMetricPrinter(max_iter),
         JSONWriter(os.path.join(output_dir, "metrics.json")),
-        TensorboardXWriter(output_dir),
+        TensorboardXWriter(tensorboard_dir),
     ]
 
 
