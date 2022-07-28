@@ -5,6 +5,8 @@
 
 # ymir docker image
 
+- ymir 1.1.0 docker images are compatible with ymir 1.0.0
+
 ```
 docker pull youdaoyzbx/ymir-executor:ymir1.0.0-detectron2-tmi
 ```
@@ -12,7 +14,7 @@ docker pull youdaoyzbx/ymir-executor:ymir1.0.0-detectron2-tmi
 # build executor
 
 ```
-docker build -t ymir/ymir-executor:ymir1.0.0-cuda111-detectron2-tmi . -f cu111.dockerfile --build-arg SERVER_MODE=dev --build-arg YMIR=1.0.0
+docker build -t ymir/ymir-executor:ymir1.1.0-cuda111-detectron2-tmi . -f cu111.dockerfile --build-arg SERVER_MODE=dev --build-arg YMIR=1.1.0
 ```
 
 ## todo 
