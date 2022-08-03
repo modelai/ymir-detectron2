@@ -22,11 +22,7 @@ RUN	apt-get update && apt-get install -y gnupg2 git libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # install ymir-exc sdk
-RUN if [ "${SERVER_MODE}" = "dev" ]; then \
-        pip install "git+https://github.com/IndustryEssentials/ymir.git/@dev#egg=ymir-exc&subdirectory=docker_executor/sample_executor/ymir_exc"; \
-    else \
-        pip install ymir-exc; \
-    fi
+RUN pip install "git+https://github.com/yzbx/ymir-executor-sdk.git@ymir1.0.0"
 
 COPY . /workspace
 RUN pip install -r requirements.txt && pip install -e . /workspace \
