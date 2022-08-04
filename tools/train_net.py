@@ -38,7 +38,7 @@ from detectron2.evaluation import (
     verify_results,
 )
 from detectron2.modeling import GeneralizedRCNNWithTTA
-
+from ymir.utils import modify_detectron2_config
 
 def build_evaluator(cfg, dataset_name, output_folder=None):
     """
@@ -123,6 +123,8 @@ def setup(args):
     cfg = get_cfg()
     cfg.merge_from_file(args.config_file)
     cfg.merge_from_list(args.opts)
+    # use ymir_dataset to train
+    modify_detectron2_config(cfg)
     cfg.freeze()
     default_setup(cfg, args)
     return cfg
@@ -130,6 +132,7 @@ def setup(args):
 
 def main(args):
     cfg = setup(args)
+
 
     if args.eval_only:
         model = Trainer.build_model(cfg)

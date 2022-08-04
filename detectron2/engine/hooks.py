@@ -25,6 +25,8 @@ from detectron2.utils.events import EventStorage, EventWriter
 from detectron2.utils.file_io import PathManager
 
 from .train_loop import HookBase
+from ymir.utils import get_ymir_process, YmirStage, write_ymir_training_result
+from ymir_exc import monitor
 
 __all__ = [
     "CallbackHook",
@@ -543,6 +545,7 @@ class EvalHook(HookBase):
         # Evaluation may take different time among workers.
         # A barrier make them start the next iteration together.
         comm.synchronize()
+        write_ymir_training_result(last=False)
 
     def after_step(self):
         next_iter = self.trainer.iter + 1
@@ -550,6 +553,12 @@ class EvalHook(HookBase):
             # do the last eval in after_train
             if next_iter != self.trainer.max_iter:
                 self._do_eval()
+
+        monitor_gap = max(1, (self.trainer.max_iter - self.trainer.start_iter + 1) // 1000)
+        if next_iter % monitor_gap == 0:
+            percent = get_ymir_process(stage=YmirStage.TASK,
+                                       p=next_iter / (self.trainer.max_iter - self.trainer.start_iter + 1))
+            monitor.write_monitor_logger(percent=percent)
 
     def after_train(self):
         # This condition is to prevent the eval from running after a failed training

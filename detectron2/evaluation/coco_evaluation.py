@@ -343,6 +343,13 @@ class COCOEvaluator(DatasetEvaluator):
         if not np.isfinite(sum(results.values())):
             self._logger.info("Some metrics cannot be computed and is shown as NaN.")
 
+        EVAL_TMP_FILE = os.getenv('EVAL_TMP_FILE')
+        if EVAL_TMP_FILE is None:
+            raise Exception(
+                'please set valid environment variable EVAL_TMP_FILE to write result into json file')
+        with open(EVAL_TMP_FILE, 'w') as f:
+            json.dump(results, f)
+            
         if class_names is None or len(class_names) <= 1:
             return results
         # Compute per-category AP
