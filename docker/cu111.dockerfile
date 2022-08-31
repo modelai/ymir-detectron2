@@ -22,7 +22,7 @@ RUN	apt-get update && apt-get install -y gnupg2 git libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # install ymir-exc sdk
-RUN pip install "git+https://github.com/yzbx/ymir-executor-sdk.git@ymir1.0.0"
+RUN pip install "git+https://github.com/modelai/ymir-executor-sdk.git@ymir1.0.0"
 
 COPY . /workspace
 RUN pip install -r requirements.txt && pip install -e . /workspace \
