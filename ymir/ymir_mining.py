@@ -2,19 +2,17 @@
 data augmentations for CALD method, including horizontal_flip, rotate(5'), cutout
 official code: https://github.com/we1pingyu/CALD/blob/master/cald/cald_helper.py
 """
-import numpy as np
-import cv2
-from scipy.stats import entropy
-from tqdm import tqdm
-
-from detectron2.data.detection_utils import read_image
-
-import argparse
 import random
 import sys
+from typing import Any, Callable, Dict, List, Tuple
+
+import cv2
+import numpy as np
+from detectron2.data.detection_utils import read_image
 from easydict import EasyDict as edict
 from nptyping import NDArray
-from typing import Any, Dict, List, Tuple
+from scipy.stats import entropy
+from tqdm import tqdm
 from ymir.utils import BBOX, CV_IMAGE, YmirStage, get_merged_config, get_ymir_process
 from ymir_exc import dataset_reader as dr
 from ymir_exc import env, monitor
@@ -33,11 +31,13 @@ def intersect(boxes1: BBOX, boxes2: BBOX) -> NDArray:
     '''
     n1 = boxes1.shape[0]
     n2 = boxes2.shape[0]
-    max_xy = np.minimum(np.expand_dims(boxes1[:, 2:], axis=1).repeat(n2, axis=1),
-                        np.expand_dims(boxes2[:, 2:], axis=0).repeat(n1, axis=0))
+    max_xy = np.minimum(
+        np.expand_dims(boxes1[:, 2:], axis=1).repeat(n2, axis=1),
+        np.expand_dims(boxes2[:, 2:], axis=0).repeat(n1, axis=0))
 
-    min_xy = np.maximum(np.expand_dims(boxes1[:, :2], axis=1).repeat(n2, axis=1),
-                        np.expand_dims(boxes2[:, :2], axis=0).repeat(n1, axis=0))
+    min_xy = np.maximum(
+        np.expand_dims(boxes1[:, :2], axis=1).repeat(n2, axis=1),
+        np.expand_dims(boxes2[:, :2], axis=0).repeat(n1, axis=0))
     inter = np.clip(max_xy - min_xy, a_min=0, a_max=None)  # (n1, n2, 2)
     return inter[:, :, 0] * inter[:, :, 1]  # (n1, n2)
 
@@ -60,8 +60,12 @@ def horizontal_flip(image: CV_IMAGE, bbox: BBOX) \
     return image, bbox
 
 
-def cutout(image: CV_IMAGE, bbox: BBOX, cut_num: int = 2, fill_val: int = 0,
-           bbox_remove_thres: float = 0.4, bbox_min_thres: float = 0.1) -> Tuple[CV_IMAGE, BBOX]:
+def cutout(image: CV_IMAGE,
+           bbox: BBOX,
+           cut_num: int = 2,
+           fill_val: int = 0,
+           bbox_remove_thres: float = 0.4,
+           bbox_min_thres: float = 0.1) -> Tuple[CV_IMAGE, BBOX]:
     '''
         Cutout augmentation
         image: A PIL image
@@ -90,8 +94,7 @@ def cutout(image: CV_IMAGE, bbox: BBOX, cut_num: int = 2, fill_val: int = 0,
         right = left + cutout_size_w
         top = random.uniform(0, original_h - cutout_size_h)
         bottom = top + cutout_size_h
-        cutout = np.array(
-            [[float(left), float(top), float(right), float(bottom)]])
+        cutout = np.array([[float(left), float(top), float(right), float(bottom)]])
 
         # Calculate intersect between cutout and bounding boxes
         overlap_size = intersect(cutout, bbox)
@@ -291,16 +294,14 @@ class YmirMining(YmirModel):
                     p = cls_scores_aug[aug_idx]
                     q = cls_scores[origin_idx]
                     m = (p + q) / 2.
-                    js = 0.5 * entropy(p, m) + 0.5 * entropy(q, m)
+                    js = 0.5 * entropy([p, 1 - p], [m, 1 - m]) + 0.5 * entropy([q, 1 - q], [m, 1 - m])
                     if js < 0:
                         js = 0
                     consistency_box = max_iou
                     consistency_cls = 0.5 * \
                         (conf[origin_idx] + conf_key[aug_idx]) * (1 - js)
-                    consistency_per_inst = abs(
-                        consistency_box + consistency_cls - beta)
-                    consistency_per_aug = min(
-                        consistency_per_aug, consistency_per_inst.item())
+                    consistency_per_inst = abs(consistency_box + consistency_cls - beta)
+                    consistency_per_aug = min(consistency_per_aug, consistency_per_inst.item())
 
                     consistency += consistency_per_aug
 
@@ -310,8 +311,10 @@ class YmirMining(YmirModel):
             idx += 1
 
             if idx % monitor_gap == 0:
-                percent = get_ymir_process(
-                    stage=YmirStage.TASK, p=idx / N, task_idx=self.task_idx, task_num=self.task_num)
+                percent = get_ymir_process(stage=YmirStage.TASK,
+                                           p=idx / N,
+                                           task_idx=self.task_idx,
+                                           task_num=self.task_num)
                 monitor.write_monitor_logger(percent=percent)
 
         return mining_result
@@ -343,10 +346,7 @@ class YmirMining(YmirModel):
 
         return the predict result and augment bbox.
         """
-        aug_dict = dict(flip=horizontal_flip,
-                        cutout=cutout,
-                        rotate=rotate,
-                        resize=resize)
+        aug_dict: Dict[str, Callable] = dict(flip=horizontal_flip, cutout=cutout, rotate=rotate, resize=resize)
 
         aug_bboxes = dict()
         aug_results = dict()
@@ -366,8 +366,7 @@ def main():
     mining_result = miner.mining()
     rw.write_mining_result(mining_result=mining_result)
 
-    percent = get_ymir_process(stage=YmirStage.POSTPROCESS,
-                               p=1, task_idx=miner.task_idx, task_num=miner.task_num)
+    percent = get_ymir_process(stage=YmirStage.POSTPROCESS, p=1, task_idx=miner.task_idx, task_num=miner.task_num)
     monitor.write_monitor_logger(percent=percent)
     return 0
 
