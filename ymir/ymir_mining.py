@@ -301,7 +301,10 @@ class YmirMining(YmirModel):
             idx += 1
 
             if idx % monitor_gap == 0:
-                write_ymir_monitor_process(self.cfg, task='mining', naive_stage_percent=idx / N, stage=YmirStage.TASK)
+                write_ymir_monitor_process(self.ymir_cfg,
+                                           task='mining',
+                                           naive_stage_percent=idx / N,
+                                           stage=YmirStage.TASK)
 
         return mining_result
 
