@@ -7,26 +7,21 @@ import subprocess
 import sys
 from easydict import EasyDict as edict
 from ymir.utils import (
-    YmirStage,
     convert_ymir_to_coco,
-    get_merged_config,
-    get_ymir_process,
     write_ymir_training_result,
 )
 from ymir_exc import monitor
+from ymir_exc.util import YmirStage, get_merged_config, write_ymir_monitor_process
 
 
 def main(cfg: edict) -> int:
     # convert ymir dataset to coco format
     convert_ymir_to_coco(cfg)
-    monitor.write_monitor_logger(percent=get_ymir_process(stage=YmirStage.PREPROCESS, p=1.0))
+    write_ymir_monitor_process(cfg, task='training', naive_stage_percent=1.0, stage=YmirStage.PREPROCESS)
 
     config_file = cfg.param.config_file
     num_gpus = len(cfg.param.gpu_id.split(','))
-    models_dir = cfg.ymir.output.models_dir
-    args_options = cfg.param.get('args_options','')
-    num_classes = len(cfg.param.class_names)
-    batch_size = int(cfg.param.batch_size)
+    args_options = cfg.param.get('args_options', '')
     command = f'python3 tools/train_net.py --config-file {config_file}' + \
         f' --num-gpus {num_gpus}'
 
@@ -35,18 +30,14 @@ def main(cfg: edict) -> int:
     logging.info(f'start training: {command}')
 
     subprocess.run(command.split(), check=True)
-    monitor.write_monitor_logger(percent=get_ymir_process(stage=YmirStage.TASK, p=1.0))
-
-    # copy tensorboard log to ymir tensorboard directory
-    # tensorboard_log_files = glob.glob(osp.join(models_dir,'events.out.tfevents.*'))
-    # for log_file in tensorboard_log_files:
-    #     shutil.copy(log_file, cfg.ymir.output.tensorboard_dir, follow_symlinks=True)
+    write_ymir_monitor_process(cfg, task='training', naive_stage_percent=1.0, stage=YmirStage.TASK)
 
     write_ymir_training_result(last=True)
     # if task done, write 100% percent log
     monitor.write_monitor_logger(percent=1.0)
 
     return 0
+
 
 if __name__ == '__main__':
     cfg = get_merged_config()

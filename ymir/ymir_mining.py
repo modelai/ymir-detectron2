@@ -13,10 +13,11 @@ from easydict import EasyDict as edict
 from nptyping import NDArray
 from scipy.stats import entropy
 from tqdm import tqdm
-from ymir.utils import BBOX, CV_IMAGE, YmirStage, get_merged_config, get_ymir_process
+from ymir.utils import BBOX, CV_IMAGE
 from ymir_exc import dataset_reader as dr
 from ymir_exc import env, monitor
 from ymir_exc import result_writer as rw
+from ymir_exc.util import YmirStage, get_merged_config, write_ymir_monitor_process
 from ymir_infer import YmirModel
 
 
@@ -243,17 +244,6 @@ def split_result(result: NDArray) -> Tuple[BBOX, NDArray, NDArray]:
 
 
 class YmirMining(YmirModel):
-    def __init__(self, cfg: edict):
-        super().__init__(cfg)
-        # for multiple tasks, mining first, then infer
-        if cfg.ymir.run_mining and cfg.ymir.run_infer:
-            mining_task_idx = 0
-            task_num = 2
-        else:
-            mining_task_idx = 0
-            task_num = 1
-        self.task_idx = mining_task_idx
-        self.task_num = task_num
 
     def mining(self):
         N = dr.items_count(env.DatasetType.CANDIDATE)
@@ -311,11 +301,7 @@ class YmirMining(YmirModel):
             idx += 1
 
             if idx % monitor_gap == 0:
-                percent = get_ymir_process(stage=YmirStage.TASK,
-                                           p=idx / N,
-                                           task_idx=self.task_idx,
-                                           task_num=self.task_num)
-                monitor.write_monitor_logger(percent=percent)
+                write_ymir_monitor_process(self.cfg, task='mining', naive_stage_percent=idx / N, stage=YmirStage.TASK)
 
         return mining_result
 
@@ -366,8 +352,7 @@ def main():
     mining_result = miner.mining()
     rw.write_mining_result(mining_result=mining_result)
 
-    percent = get_ymir_process(stage=YmirStage.POSTPROCESS, p=1, task_idx=miner.task_idx, task_num=miner.task_num)
-    monitor.write_monitor_logger(percent=percent)
+    write_ymir_monitor_process(cfg, task='mining', naive_stage_percent=1, stage=YmirStage.POSTPROCESS)
     return 0
 
 
